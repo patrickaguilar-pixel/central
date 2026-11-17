@@ -13,11 +13,22 @@ const provider=new firebase.auth.GoogleAuthProvider(); provider.addScope(SCOPE);
 const TK='central.gtoken';
 function getTok(){ try{ const t=JSON.parse(localStorage.getItem(TK)||'null'); if(t&&t.exp>Date.now()+60000) return t.v; }catch(e){} return null; }
 function setTok(cred){ if(cred&&cred.accessToken){ try{ localStorage.setItem(TK,JSON.stringify({v:cred.accessToken,exp:Date.now()+55*60000})); }catch(e){} } }
+const consentProvider=new firebase.auth.GoogleAuthProvider(); consentProvider.addScope(SCOPE); consentProvider.setCustomParameters({prompt:'consent'});
 async function connectGoogle(){
   const u=auth.currentUser; if(!u) throw {code:'needs_reauth'};
-  const r=await u.reauthenticateWithPopup(provider); setTok(r.credential); return getTok();
+  const r=await u.reauthenticateWithPopup(consentProvider);
+  if(!r||!r.credential||!r.credential.accessToken) throw {code:'no_token',message:'O Google não devolveu a permissão.'};
+  setTok(r.credential);
+  // confere se a permissão da agenda foi marcada
+  try{ const ti=await (await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+encodeURIComponent(r.credential.accessToken))).json();
+    if(ti&&ti.scope&&ti.scope.indexOf(SCOPE)<0){ try{ localStorage.removeItem(TK);}catch(e){} throw {code:'scope_missing'}; } }catch(e){ if(e&&e.code==='scope_missing') throw e; }
+  return getTok();
 }
-window.centralConnectGoogle=()=>connectGoogle().then(()=>{ document.dispatchEvent(new CustomEvent('central:gconnected')); }).catch(e=>{ if(e&&e.code!=='auth/popup-closed-by-user') alert('Não consegui conectar ao Google Agenda: '+(e.message||e.code)); });
+window.centralConnectGoogle=()=>connectGoogle().then(()=>{ document.dispatchEvent(new CustomEvent('central:gconnected')); }).catch(e=>{
+  if(e&&(e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request')) return;
+  if(e&&e.code==='scope_missing') return alert('Faltou marcar a permissão da agenda.\n\nToque em Conectar de novo e, na tela do Google, MARQUE a caixinha "Ver, editar, compartilhar e excluir permanentemente todas as agendas" (ou "eventos") antes de Continuar.');
+  if(e&&e.code==='auth/popup-blocked') return alert('O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente de novo.');
+  alert('Não consegui conectar ao Google Agenda ('+((e&&(e.code||e.message))||'erro')+').'); });
 
 /* ---- tela de login ---- */
 let readyResolve; const ready=new Promise(r=>readyResolve=r);
@@ -67,7 +78,11 @@ async function gfetch(url,opt){
   const t=getTok(); if(!t) throw {code:'needs_reauth',message:'Conecte o Google Agenda.'};
   let r; try{ r=await fetch(url,Object.assign({},opt,{headers:Object.assign({'Authorization':'Bearer '+t,'Content-Type':'application/json'},(opt&&opt.headers)||{})})); }catch(e){ throw {code:'upstream_error',message:'Sem conexão com o Google. Confira a internet.'}; }
   if(r.status===401){ try{ localStorage.removeItem(TK);}catch(e){} throw {code:'needs_reauth',message:'Sessão do Google expirou.'}; }
-  if(r.status===403){ try{ localStorage.removeItem(TK);}catch(e){} throw {code:'needs_reauth',message:'Permissão do Google Agenda não concedida.'}; }
+  if(r.status===403){ let j=null; try{ j=await r.json(); }catch(e){}
+    const txt=JSON.stringify(j||{});
+    if(/SERVICE_DISABLED|accessNotConfigured|has not been used|is disabled/i.test(txt)) throw {code:'api_disabled',message:'A Google Calendar API não está ativada no projeto.'};
+    if(/insufficient|SCOPE/i.test(txt)){ try{ localStorage.removeItem(TK);}catch(e){} throw {code:'scope_missing',message:'Permissão da agenda não marcada.'}; }
+    throw {code:'upstream_error',message:(j&&j.error&&j.error.message)||'Acesso negado pelo Google (403).'}; }
   if(r.status===404||r.status===410) throw {code:'tool_error',message:'not found'};
   if(!r.ok){ let m=''; try{ m=(await r.json()).error.message; }catch(e){} throw {code:'upstream_error',message:m||('Erro '+r.status)}; }
   return r.status===204?null:r.json();
