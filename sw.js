@@ -1,5 +1,5 @@
 /* rede primeiro: sempre a versão mais nova; cache só para abrir sem internet */
-const C='central-1794936023';
+const C='central-1794936437';
 self.addEventListener('install',e=>{ self.skipWaiting(); });
 self.addEventListener('activate',e=>{ e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch',e=>{

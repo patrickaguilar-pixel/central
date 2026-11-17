@@ -957,6 +957,24 @@ h1{font-size:24px;letter-spacing:-.02em}
 
 .toast{top:18px;bottom:auto!important}
 @media (max-width:900px){ .toast{top:calc(12px + env(safe-area-inset-top))} }
+
+/* ===== barra de anotar flutuante ===== */
+.main{position:relative}
+.main>header{position:absolute;left:0;right:0;bottom:0;z-index:20;pointer-events:none}
+.main>header .topbar{background:transparent;border:0;padding:0 28px 18px;justify-content:center}
+.main>header .capture{pointer-events:auto;width:100%;max-width:760px;border-radius:999px;padding:6px 6px 6px 18px;background:rgba(25,30,42,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line2);box-shadow:0 18px 40px -14px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.02)}
+.main>header .capture .btn.primary{border-radius:999px}
+.main>header .capture:focus-within{border-color:#3f74f6;box-shadow:0 18px 40px -14px rgba(0,0,0,.85),0 0 0 3px rgba(63,116,246,.25)}
+.main>.ask{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;z-index:21;width:min(760px,calc(100% - 56px));border:1px solid var(--line2)!important;border-radius:16px;background:rgba(25,30,42,.96);backdrop-filter:blur(14px);box-shadow:0 18px 40px -14px rgba(0,0,0,.85);padding:0 16px}
+.main>.ask.hidden{display:none}
+.content{padding-bottom:120px!important}
+@media (max-width:900px){
+ .main>header{bottom:calc(62px + env(safe-area-inset-bottom))}
+ .main>header .topbar{padding:0 12px 10px}
+ .main>header .capture{padding:5px 5px 5px 16px}
+ .main>.ask{bottom:calc(62px + env(safe-area-inset-bottom) + 70px);width:calc(100% - 24px);padding:0 12px}
+ .content{padding-bottom:110px!important}
+}
 </style>
 </head>
 <body spellcheck="true">
