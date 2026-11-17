@@ -1051,6 +1051,41 @@ h1{font-size:24px;letter-spacing:-.02em}
 .bk-ta:focus{border-color:var(--accent)}
 .bk-sec .btn{align-self:flex-start}
 #backupBtn{color:var(--muted);font-size:12.5px}
+
+/* ===== barra de anotar embaixo ===== */
+.main>header{order:3}
+.main>.ask{order:2;border-bottom:0;border-top:1px solid var(--line)}
+.main>.banner{order:0}
+.main>.content{order:1}
+.topbar{border-bottom:0;border-top:1px solid var(--line);padding-top:12px;padding-bottom:14px;background:var(--bg)}
+.ac{top:auto;bottom:calc(100% + 6px)}
+.content{padding-bottom:40px}
+.pl-float{bottom:92px}
+.toast{bottom:96px}
+.pops{bottom:100px}
+.help-btn{bottom:92px}
+.help-card{bottom:136px}
+@media (max-width:900px){
+ #menuBtn{display:none!important}
+ .main{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
+ .topbar{padding:8px 12px 8px}
+ .content{padding-bottom:24px}
+ .pl-float{bottom:calc(140px + env(safe-area-inset-bottom))}
+ .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
+ .pops{bottom:calc(140px + env(safe-area-inset-bottom))}
+ .app.with-detail ~ .toast{bottom:22px}
+}
+
+@media (max-width:900px){
+ .hint-n{display:none}
+ .ask{padding:0 12px}
+ .ask-in{flex-wrap:wrap;white-space:normal;gap:8px 10px;padding:10px 0;font-size:14px}
+ .ask-t{flex:1 1 calc(100% - 40px)}
+ .ask-q{flex:1 1 auto}
+}
+
+.toast{top:18px;bottom:auto!important}
+@media (max-width:900px){ .toast{top:calc(12px + env(safe-area-inset-top))} }
 #loginGate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:radial-gradient(1200px 600px at 50% -10%,#1a2440 0%,#0c0f15 60%);padding:24px}
 #loginGate .lg-box{width:min(360px,100%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
 #loginGate .lg-logo{width:64px;height:64px;border-radius:18px;background:#3f74f6;display:grid;place-items:center;color:#fff;box-shadow:0 14px 34px -12px rgba(63,116,246,.8)}
@@ -1432,7 +1467,7 @@ function getView(){
   if(view==='inbox'){
     const l=vis().filter(i=>i.status==='inbox').sort((a,b)=>b.createdAt-a.createdAt);
     return {title:'Caixa de entrada',sub:'Tudo o que você anota cai aqui primeiro. Depois é só organizar.',groups:[{items:l}],
-      empty:['Caixa de entrada vazia','Anote qualquer coisa na barra acima. Sem pensar em categoria.']};
+      empty:['Caixa de entrada vazia','Anote qualquer coisa na barra abaixo. Sem pensar em categoria.']};
   }
   if(view==='today'){
     const open=vis().filter(isOpenTask);
@@ -1716,7 +1751,7 @@ function renderList(){
   }
   const groups=v.groups.filter(g=>g.items.length);
   const topHtml=v.top||'';
-  if(!groups.length){ $('#list').innerHTML=topHtml+`<div class="empty"><div class="big">${v.locked?ic('lock')+' ':''}${esc(v.empty[0])}</div>${esc(v.empty[1])}<div style="margin-top:14px">${v.locked?`<button class="btn primary" id="unlockHere">${ic('unlock')}Desbloquear</button>`:'Atalho: <span class="kbd">N</span> para anotar'}</div></div>`; return; }
+  if(!groups.length){ $('#list').innerHTML=topHtml+`<div class="empty"><div class="big">${v.locked?ic('lock')+' ':''}${esc(v.empty[0])}</div>${esc(v.empty[1])}<div style="margin-top:14px">${v.locked?`<button class="btn primary" id="unlockHere">${ic('unlock')}Desbloquear</button>`:'<span class="hint-n">Atalho: <span class="kbd">N</span> para anotar</span>'}</div></div>`; return; }
   $('#list').innerHTML=topHtml+groups.map(g=>(g.label&&(v.groups.length>1||view==='done')?`<div class="group-label ${g.cls||''}">${esc(g.label)}<span class="n">${g.items.length}</span></div>`:'')+g.items.map(rowHTML).join('')).join('');
 }
 function renderTabbar(){
