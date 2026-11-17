@@ -2864,7 +2864,7 @@ async function init(){
       if(!snap.metadata.fromCache){ loaded=true; clearTimeout(slow); banner(null); }
       renderMain(); if(loaded) setTimeout(checkReminders,400);
       if(selectedId){ if(!items.some(i=>i.id===selectedId)) select(null); else if(!$('#detail').contains(document.activeElement)) renderDetail(); }
-    },err=>{ clearTimeout(slow); loaded=true; banner(err&&err.code==='revoked'?'O acesso aos dados foi encerrado. Recarregue a página.':'Não foi possível sincronizar seus dados. Recarregue a página mais tarde.'); renderMain(); });
+    },err=>{ clearTimeout(slow); loaded=true; banner(err&&err.code==='permission-denied'?'Sem permissão no banco de dados (permission-denied). Confira as Regras do Firestore no Firebase.':(err&&(err.code==='not-found'||err.code==='failed-precondition'))?'Banco de dados não encontrado ('+err.code+'). Confira se o Firestore foi criado com o ID (default).':'Não foi possível sincronizar seus dados ('+((err&&(err.code||err.message))||'erro')+'). Recarregue a página.'); console.error(err); renderMain(); });
     db.doc('config/settings').onSnapshot(s=>{
       if(s.exists){const d=s.data(); if(Array.isArray(d.areas)) areas=d.areas.map(a=>Object.assign({},a)); pinCfg=d.pin&&d.pin.hash?Object.assign({},d.pin):null; if(d.sheet) sheetCfg=Object.assign({},sheetCfg,d.sheet);}
       renderMain(); if(selectedId&&!$('#detail').contains(document.activeElement)) renderDetail();
