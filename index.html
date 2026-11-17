@@ -1733,7 +1733,7 @@ function renderList(){
   const acts=[];
   if(sample&&view==='inbox'&&vis().some(i=>i.status==='inbox')) acts.push(`<button class="btn ai" id="aiOrganize">${ic('spark')}Organizar com IA</button>`);
   const va=view.startsWith('area:')?areaById(view.slice(5)):null;
-  { const pf=$('#plFloat'); if(va&&sheetCfg.area&&areaIds(sheetCfg.area).includes(va.id)&&!lockedNow(va)){ const n=plannerPending(); pf.innerHTML=`<button class="btn ${n?'primary':''}" id="plBtn">${ic('board')}Levar ao planner${n?` <span class="pill">${n}</span>`:''}</button>`; pf.classList.remove('hidden'); } else { pf.innerHTML=''; pf.classList.add('hidden'); } }
+  { const pf=$('#plFloat'); if(false&&va&&sheetCfg.area&&areaIds(sheetCfg.area).includes(va.id)&&!lockedNow(va)){ const n=plannerPending(); pf.innerHTML=`<button class="btn ${n?'primary':''}" id="plBtn">${ic('board')}Levar ao planner${n?` <span class="pill">${n}</span>`:''}</button>`; pf.classList.remove('hidden'); } else { pf.innerHTML=''; pf.classList.add('hidden'); } }
   if(sample&&(view==='today'||view==='tasks')) acts.push(`<button class="btn ai" id="aiPlan">${ic('spark')}Planejar meu dia</button>`);
   $('#viewActions').innerHTML=acts.join('');
   if(!loaded&&!items.length){ $('#list').innerHTML='<div class="loading"><span class="spinner"></span>Carregando seus dados…</div>'; return; }
