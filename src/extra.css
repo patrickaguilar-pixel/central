@@ -1,0 +1,9 @@
+#loginGate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:radial-gradient(1200px 600px at 50% -10%,#1a2440 0%,#0c0f15 60%);padding:24px}
+#loginGate .lg-box{width:min(360px,100%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+#loginGate .lg-logo{width:64px;height:64px;border-radius:18px;background:#3f74f6;display:grid;place-items:center;color:#fff;box-shadow:0 14px 34px -12px rgba(63,116,246,.8)}
+#loginGate .lg-logo svg{width:34px;height:34px}
+#loginGate h1{margin:6px 0 0;font-size:28px;color:#e8ebf3}
+#loginGate p{margin:0 0 14px;color:#9ba4b6;font-size:14.5px}
+#loginGate button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:50px;border-radius:14px;border:1px solid #2b3343;background:#fff;color:#1f2430;font-weight:700;font-size:15.5px;cursor:pointer}
+#loginGate .lg-msg{min-height:20px;color:#ff6b7a;font-size:13px}
+#signOutBtn{color:var(--faint);font-size:12.5px}
