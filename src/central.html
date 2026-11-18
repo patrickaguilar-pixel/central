@@ -475,6 +475,17 @@ input.wz-in[data-wfield="project"]{margin-top:10px}
 .row-status:hover,.row-status:focus{border-color:var(--accent);color:var(--text)}
 .row-status.st-doing{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 .row-status.st-waiting{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.row-status.st-approval{color:#a78bfa;border-color:color-mix(in srgb,#a78bfa 45%,var(--line))}
+.chip.appr{color:#a78bfa;background:color-mix(in srgb,#a78bfa 14%,transparent)}
+.appr-line{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,#a78bfa 10%,transparent);color:#a78bfa;font-size:13px}
+.appr-line svg{width:15px;height:15px}
+.appr-who{background:transparent;border:1px solid color-mix(in srgb,#a78bfa 45%,transparent);color:#c4b5fd;border-radius:8px;padding:3px 9px;font-weight:600;cursor:pointer;font:inherit;font-weight:600}
+.ap-in{width:100%;box-sizing:border-box;background:var(--panel2,var(--hover));color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;outline:none}
+.ap-in:focus{border-color:var(--accent)}
+.ap-in::-webkit-calendar-picker-indicator{opacity:0}
+.ap-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.ap-chip{background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+.ap-chip:hover,.ap-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .ag-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 6px}
 .ag-bar .muted{margin-left:auto}
 .ag-msg{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-top:12px;line-height:1.5}
@@ -1102,7 +1113,7 @@ const ic=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColo
 
 const DEFAULT_AREAS=[{id:'trabalho',name:'Trabalho',color:'#3563e9'},{id:'pessoal',name:'Pessoal',color:'#16a34a'},{id:'estudos',name:'Estudos',color:'#9333ea'},{id:'financas',name:'Finanças',color:'#d97706'}];
 const COLORS=['#3563e9','#16a34a','#9333ea','#d97706','#e11d48','#0891b2','#64748b','#c026d3','#65a30d'];
-const STATUS={inbox:'Caixa de entrada',todo:'A fazer',doing:'Em andamento',waiting:'Aguardando',done:'Concluída',cancelled:'Cancelada'};
+const STATUS={inbox:'Caixa de entrada',todo:'A fazer',doing:'Em andamento',waiting:'Pendência',approval:'Para aprovação',done:'Concluída',cancelled:'Cancelada'};
 const isClosed=i=>i.status==='done'||i.status==='cancelled';
 const PRIO={0:'Sem prioridade',1:'Alta',2:'Média',3:'Baixa'};
 
@@ -1368,7 +1379,8 @@ function getView(){
     const open=vis().filter(i=>isOpenTask(i)&&i.status!=='inbox').sort(sortTasks);
     return {title:'Todas as tarefas',sub:'Tarefas organizadas e em andamento.',groups:[
       {label:'Em andamento',items:open.filter(i=>i.status==='doing')},
-      {label:'Aguardando',items:open.filter(i=>i.status==='waiting')},
+      {label:'Pendência',items:open.filter(i=>i.status==='waiting')},
+      {label:'Para aprovação',items:open.filter(i=>i.status==='approval')},
       {label:'A fazer',items:open.filter(i=>i.status==='todo')}],
       empty:['Nenhuma tarefa organizada ainda','Organize itens da Caixa de entrada para que apareçam aqui.']};
   }
@@ -1393,8 +1405,8 @@ function getView(){
     const open=inA.filter(isOpenTask).sort(sortTasks);
     const subs=areas.filter(x=>x.parent===id);
     if(a&&!isChild(a)&&subs.length){
-      const stOrd={doing:0,waiting:1,todo:2};
-      const colItems=ids2=>{ const o=open.filter(i=>ids2.includes(i.area)).sort((x,y)=>(stOrd[x.status]??2)-(stOrd[y.status]??2)||sortTasks(x,y)); const n=inA.filter(i=>isNote(i)&&ids2.includes(i.area)).sort((x,y)=>y.updatedAt-x.updatedAt); return o.concat(n); };
+      const stOrd={doing:0,waiting:1,approval:2,todo:3};
+      const colItems=ids2=>{ const o=open.filter(i=>ids2.includes(i.area)).sort((x,y)=>(stOrd[x.status]??3)-(stOrd[y.status]??3)||sortTasks(x,y)); const n=inA.filter(i=>isNote(i)&&ids2.includes(i.area)).sort((x,y)=>y.updatedAt-x.updatedAt); return o.concat(n); };
       const cols=subs.filter(x=>!lockedNow(x)).map(x=>({label:x.name,area:x,items:colItems([x.id])}));
       const direct=colItems([id]); if(direct.length) cols.unshift({label:'Geral',area:a,items:direct,general:true});
       return {title:a.name,sub:'Inclui as subáreas: '+subs.map(x=>x.name).join(', ')+'.',groups:cols,columns:true,
@@ -1402,8 +1414,9 @@ function getView(){
     }
     return {title:a?a.name:'Área',sub:a&&isChild(a)?'Subárea de '+areaById(a.parent).name+'.':(subs.length?'Inclui as subáreas: '+subs.map(x=>x.name).join(', ')+'.':'Tarefas e anotações desta área.'),groups:[
       {label:'Em andamento',items:open.filter(i=>i.status==='doing')},
-      {label:'Aguardando',items:open.filter(i=>i.status==='waiting')},
-      {label:'A fazer',items:open.filter(i=>i.status!=='doing'&&i.status!=='waiting')},
+      {label:'Pendência',items:open.filter(i=>i.status==='waiting')},
+      {label:'Para aprovação',items:open.filter(i=>i.status==='approval')},
+      {label:'A fazer',items:open.filter(i=>!['doing','waiting','approval'].includes(i.status))},
       {label:'Anotações',items:inA.filter(isNote).sort((x,y)=>y.updatedAt-x.updatedAt)}],
       empty:['Nada nesta área ainda','Use #'+(a?slug(a.name):'area')+' na barra para adicionar direto aqui.']};
   }
@@ -1482,6 +1495,7 @@ function rowHTML(i,opt){
   if(i.priority&&!note) meta.push(`<span class="chip p${i.priority}">${ic('flag')}${PRIO[i.priority]}</span>`);
 
   if((i.status==='doing'||i.status==='waiting')&&(opt.col||(view!=='tasks'&&!view.startsWith('area:')))) meta.push(`<span class="chip doing">${STATUS[i.status]}</span>`);
+  if(i.status==='approval'&&!note) meta.push(`<span class="chip appr" title="Aguardando aprovação">${ic('check')}aprovação${i.approver?' · @'+esc(i.approver):''}</span>`);
   if(i.status==='cancelled') meta.push(`<span class="chip">Cancelada</span>`);
   if(!note){ const ls=logStats(i); if(ls.remDue&&!done) meta.push(`<span class="chip cd-today">${ic('bell')}lembrete</span>`); else if(ls.rem&&!done) meta.push(`<span class="chip">${ic('bell')}${fmtDue(ls.rem.date)}</span>`);
     if(ls.q&&!done) meta.push(`<span class="chip q">${ic('help')}${ls.q}</span>`); if(ls.n) meta.push(`<span class="chip" title="Anotações da atividade">${ic('note')}${ls.n}</span>`); }
@@ -1499,7 +1513,7 @@ function rowHTML(i,opt){
   return `<div class="row ${selectedId===i.id?'sel':''} ${done?'done':''} ${sticky.has(i.id)?'touched':''}" data-id="${esc(i.id)}">
     ${note?`<span class="note-ic">${ic('note')}</span>`:`<button class="check ${i.priority&&!done?'p'+i.priority:''}" data-check="${esc(i.id)}" title="${done?'Reabrir':'Concluir'}">${done?ic('check'):''}</button>`}
     <div class="row-main"><div class="row-title">${i.title?esc(i.title):'<span class="muted">Sem título</span>'}</div>${prev}${(()=>{
-      const sel=!note&&!done?`<select class="row-status st-${i.status}" data-rstatus="${esc(i.id)}" title="Mudar status">${['todo','doing','waiting','done','cancelled'].map(k=>`<option value="${k}" ${(i.status==='inbox'?'todo':i.status)===k?'selected':''}>${STATUS[k]}</option>`).join('')}</select>`:'';
+      const sel=!note&&!done?`<select class="row-status st-${i.status}" data-rstatus="${esc(i.id)}" title="Mudar status">${['todo','doing','waiting','approval','done','cancelled'].map(k=>`<option value="${k}" ${(i.status==='inbox'?'todo':i.status)===k?'selected':''}>${STATUS[k]}</option>`).join('')}</select>`:'';
       return meta.length||sel?`<div class="row-foot">${meta.length?`<div class="meta">${meta.join('')}</div>`:'<span></span>'}${sel}</div>`:''; })()}</div></div>`;
 }
 /* ---------- agenda google ---------- */
@@ -1769,7 +1783,9 @@ function renderDetail(){
     ${!note?`<label>Status<select id="dStatus">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${i.status===k?'selected':''}>${v}</option>`).join('')}</select></label>`:''}
     <label>Área<select id="dArea"><option value="">Nenhuma</option>${orderedAreas().filter(a=>!lockedNow(a)||a.id===i.area).map(a=>`<option value="${esc(a.id)}" ${i.area===a.id?'selected':''}>${isChild(a)?'\u00A0\u00A0\u00A0↳ ':''}${esc(a.name)}</option>`).join('')}</select></label>
     ${!note?`<label>Prioridade<select id="dPrio">${[1,2,3,0].map(p=>`<option value="${p}" ${(i.priority||0)===p?'selected':''}>${PRIO[p]}</option>`).join('')}</select></label>`:''}
-  </div></section>
+  </div>
+  ${!note&&i.status==='approval'?`<div class="appr-line">${ic('check')}<span>Para aprovação de</span><button type="button" class="appr-who" id="dApprover" title="Trocar quem aprova">${i.approver?'@'+esc(i.approver):'escolher pessoa'}</button></div>`:''}
+  </section>
   ${!note?`<section class="d-card"><div class="d-card-h">Datas</div>
   <div class="fields three">
     <label>Prazo inicial<button type="button" class="date-btn" data-dp="start">${i.start?fmtShortD(i.start):'<span class="ph">Definir</span>'}${ic('calendar')}</button></label>
@@ -1910,9 +1926,11 @@ function bindDetail(id){
   t.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();t.blur();}};
   t.onblur=()=>{if(timers[id]) flush(id);};
   const n=$('#dNotes'); if(n){ autosize(n); n.oninput=()=>{autosize(n); updateItem(id,{notes:n.value},true);}; n.onblur=()=>{if(timers[id]) flush(id);}; }
-  const s=$('#dStatus'); if(s) s.onchange=()=>{const v=s.value;const p={status:v}; p.completedAt=(v==='done'||v==='cancelled')?(get().completedAt||Date.now()):null; updateItem(id,p); renderDetail();};
+  const s=$('#dStatus'); if(s) s.onchange=()=>{const v=s.value;const p={status:v};
+    if(v==='approval'){ askApprover(get(),who=>{ updateItem(id,{status:'approval',approver:who,completedAt:null}); renderDetail(); toast('Para aprovação de @'+who); },()=>renderDetail()); return; } p.completedAt=(v==='done'||v==='cancelled')?(get().completedAt||Date.now()):null; updateItem(id,p); renderDetail();};
   $('#dArea').onchange=e=>updateItem(id,{area:e.target.value||null});
   const pr=$('#dPrio'); if(pr) pr.onchange=()=>updateItem(id,{priority:+pr.value});
+  const apb=$('#dApprover'); if(apb) apb.onclick=()=>askApprover(get(),who=>{ updateItem(id,{approver:who}); renderDetail(); });
   const du=$('#dDue'); if(du) du.onchange=()=>{updateItem(id,du.value?{due:du.value}:{due:null,dueTime:null}); renderDetail();};
   const dt=$('#dTime'); if(dt) dt.onchange=()=>{const p={dueTime:dt.value||null}; if(dt.value&&!get().due) p.due=today(); updateItem(id,p); renderDetail();};
   const ds=$('#dStart'); if(ds) ds.onchange=()=>{updateItem(id,{start:ds.value||null}); const it=get(); if(it.start&&it.due&&it.start>it.due) toast('Atenção: o início está depois do prazo.'); renderDetail();};
@@ -1953,7 +1971,7 @@ function setView(v){
 }
 
 /* ---------- planner ---------- */
-const PL_STATUS={inbox:'A fazer',todo:'A fazer',doing:'Em andamento',waiting:'Aguardando',done:'Concluída',cancelled:'Cancelada'};
+const PL_STATUS={inbox:'A fazer',todo:'A fazer',doing:'Em andamento',waiting:'Pendência',approval:'Para aprovação',done:'Concluída',cancelled:'Cancelada'};
 const PL_PRIO={0:'Normal',1:'Alta',2:'Normal',3:'Baixa'};
 const PL_TEAM='Geoprocessamento', PL_RESP='Patrick Aguilar', PL_PROJ0=['Portal','Boletim','Rede de estações'];
 const PL_LABEL={tipo:'Lançar como',projeto:'Atividade / projeto',texto:'Tarefa',quem:'Depende de',depois:'Depois de',status:'Situação',prioridade:'Prioridade',inicio:'Início',prazo:'Prazo'};
@@ -1964,7 +1982,7 @@ function projDefault(i){ const a=areaById(i.area); if(!a) return ''; const n=slu
 const ATIV_LIST=[...PROJ_TIPO,'Outros'];
 const plProj=i=>{ if(i.plAtiv){ const a=projDefault(i); return a?i.plAtiv+' - '+a:i.plAtiv; } return (i.project||'').trim(); };
 const stepLine=x=>x.text+(x.who?' @'+x.who:'');
-function people(){ const set=new Set(PEOPLE0); items.forEach(i=>{ if(i.plWho) set.add(i.plWho); (i.subtasks||[]).forEach(x=>{ if(x.who) set.add(x.who); }); (Array.isArray(i.log)?i.log:[]).forEach(x=>mentionsOf(x.text).forEach(n=>set.add(n))); }); return Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+function people(){ const set=new Set(PEOPLE0); items.forEach(i=>{ if(i.plWho) set.add(i.plWho); if(i.approver) set.add(i.approver); (i.subtasks||[]).forEach(x=>{ if(x.who) set.add(x.who); }); (Array.isArray(i.log)?i.log:[]).forEach(x=>mentionsOf(x.text).forEach(n=>set.add(n))); }); return Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR')); }
 const cleanWho=v=>String(v||'').trim().replace(/^@+/,'');
 const brD=s=>{ if(!s) return ''; const [y,m,d]=s.split('-'); return d+'/'+m+'/'+y; };
 function inPlanner(i){ if(!i||isNote(i)||i.status==='inbox'||!sheetCfg.area||!areaById(sheetCfg.area)) return false; return areaIds(sheetCfg.area).includes(i.area); }
@@ -2221,7 +2239,7 @@ function wizRender(){
         <label class="wz-f ${stp==='time'?'act':''}">Horário${wizDateBtn('dueTime',d.due?d.dueTime:null,d.due?'Opcional':'Defina o prazo','clock')}</label>
       </div>${qHtml}`);
     const prio=`<div class="wz-f">Prioridade<div class="wz-chips wz-seg">${[[1,'Alta'],[2,'Média'],[3,'Baixa'],[0,'Nenhuma']].map(([v,l])=>chip('priority',v,l,(d.priority||0)===v,`<i class="dotp p${v}"></i>`)).join('')}</div></div>`;
-    const stat=work?`<div class="wz-f">Situação<div class="wz-chips wz-seg">${[['todo','A fazer'],['doing','Em andamento'],['waiting','Aguardando'],['done','Concluída']].map(([v,l])=>chip('status',v,l,d.status===v)).join('')}</div></div>`:'';
+    const stat=work?`<div class="wz-f">Situação<div class="wz-chips wz-seg">${[['todo','A fazer'],['doing','Em andamento'],['waiting','Pendência'],['done','Concluída']].map(([v,l])=>chip('status',v,l,d.status===v)).join('')}</div></div>`:'';
     const doneRow=work&&d.status==='done'?`<div class="wz-done"><label class="wz-f">Data de conclusão${wizDateBtn('doneDate',d.doneDate,'Escolha a data','checkc')}</label><div class="wz-chips">${chip('doneDate',t,'Hoje',d.doneDate===t)}${chip('doneDate',addDays(-1),'Ontem',d.doneDate===addDays(-1))}</div></div>`:'';
     html+=card('Prioridade e situação',`<div class="wz-ps">${prio}${stat}</div>${doneRow}`);
     html+=card('Observação geral',`<textarea class="wz-in wz-ta" data-wfield="notes" rows="2" placeholder="Uma observação fixa sobre a atividade (opcional). Aparece na aba Anotações.">${esc(d.notes||'')}</textarea>`);
@@ -2372,6 +2390,23 @@ $('#areasNav').onclick=e=>{ if(e.target.closest('#addAreaNav')) return openAreas
   if(tg&&curParent===id){ collapsed=collapsed===id?null:id; renderNav(); return; }
   if(b.dataset.view===view&&areas.some(x=>x.parent===id)){ collapsed=collapsed===id?null:id; renderNav(); return; }
   collapsed=null; setView(b.dataset.view);};
+function askApprover(i,onOk,onCancel){
+  const cur=(i&&i.approver)||''; let done=false;
+  const ppl=people();
+  openModal('Para aprovação',`<p style="margin:0 0 10px">Quem vai aprovar${i&&i.title?' <b>'+esc(i.title.slice(0,60))+'</b>':''}?</p>
+    <input id="apIn" class="ap-in" list="apList" placeholder="@pessoa" value="${esc(cur?'@'+cur:'')}" autocomplete="off">
+    <datalist id="apList">${ppl.map(p=>`<option value="@${esc(p)}">`).join('')}</datalist>
+    <div class="ap-chips">${ppl.map(p=>`<button type="button" class="ap-chip ${p===cur?'on':''}" data-ap="${esc(p)}">@${esc(p)}</button>`).join('')}</div>`,
+    `<button class="btn" id="apNo">Cancelar</button><button class="btn primary" id="apYes">Confirmar</button>`);
+  const inp=$('#apIn');
+  const ok=()=>{ const w=cleanWho(inp.value); if(!w){ inp.focus(); toast('Escolha ou digite a pessoa (@nome)'); return; } done=true; modalOnClose=null; closeModal(); onOk(w); };
+  const cancel=()=>closeModal();
+  modalOnClose=()=>{ if(!done&&onCancel) onCancel(); };
+  $('#apNo').onclick=cancel; $('#apYes').onclick=ok;
+  $$('#modalBody [data-ap]').forEach(b=>b.onclick=()=>{ inp.value='@'+b.dataset.ap; ok(); });
+  inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); ok(); } };
+  setTimeout(()=>{ inp.focus(); if(!inp.value) inp.value='@'; },30);
+}
 function confirmBox(title,msg,okLabel,danger,onOk){
   openModal(title,`<p style="margin:0">${msg}</p>`,`<button class="btn" id="cfNo">Cancelar</button><button class="btn ${danger?'danger-fill':'primary'}" id="cfYes">${okLabel}</button>`);
   $('#cfNo').onclick=closeModal; $('#cfYes').onclick=()=>{ closeModal(); onOk(); }; setTimeout(()=>{ const y=$('#cfYes'); if(y) y.focus(); },30);
@@ -2417,6 +2452,7 @@ $('#list').addEventListener('click',e=>{
   const et=e.target.closest('[data-evtask]'); if(et&&!e.target.closest('a')){ select(et.dataset.evtask); } });
 $('#list').addEventListener('change',e=>{
   const rs=e.target.closest('[data-rstatus]'); if(rs){ const i=items.find(x=>x.id===rs.dataset.rstatus); if(!i) return; const v=rs.value, p={status:v};
+    if(v==='approval'){ askApprover(i,who=>{ updateItem(i.id,{status:'approval',approver:who,completedAt:null}); toast('Para aprovação de @'+who); if(selectedId===i.id) renderDetail(); },()=>renderList()); return; }
     p.completedAt=(v==='done'||v==='cancelled')?(i.completedAt||Date.now()):null;
     updateItem(i.id,p); toast(v==='done'?'Concluída ✓ (foi para Concluídos)':v==='cancelled'?'Cancelada (foi para Concluídos)':'Status: '+STATUS[v]);
     if(selectedId===i.id) renderDetail(); return; }
@@ -2485,7 +2521,8 @@ function openBackup(ok){
   };
 }
 function openModal(title,body,foot){$('#modalTitle').textContent=title;$('#modalBody').innerHTML=body;$('#modalFoot').innerHTML=foot||'';$('#modalBg').classList.remove('hidden');}
-function closeModal(){ if(modalAbort){try{modalAbort.abort();}catch(e){} modalAbort=null;} $('#modalBg').classList.add('hidden'); $('#modalBg').classList.remove('wide-modal','wiz-modal'); wiz=null; }
+let modalOnClose=null;
+function closeModal(){ const mf=modalOnClose; modalOnClose=null; if(mf) setTimeout(mf,0); if(modalAbort){try{modalAbort.abort();}catch(e){} modalAbort=null;} $('#modalBg').classList.add('hidden'); $('#modalBg').classList.remove('wide-modal','wiz-modal'); wiz=null; }
 
 /* ---------- áreas ---------- */
 function openAreas(focusNew,okPin){
