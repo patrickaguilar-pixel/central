@@ -476,6 +476,9 @@ input.wz-in[data-wfield="project"]{margin-top:10px}
 .row-status.st-doing{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 .row-status.st-waiting{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
 .row-status.st-approval{color:#a78bfa;border-color:color-mix(in srgb,#a78bfa 45%,var(--line))}
+.check.appr{border-color:#a78bfa!important;color:#a78bfa;background:color-mix(in srgb,#a78bfa 16%,transparent)}
+.check.appr svg{opacity:.85}
+.cd-line.cd-appr{color:#a78bfa}
 .chip.appr{color:#a78bfa;background:color-mix(in srgb,#a78bfa 14%,transparent)}
 .appr-line{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,#a78bfa 10%,transparent);color:#a78bfa;font-size:13px}
 .appr-line svg{width:15px;height:15px}
@@ -1170,7 +1173,7 @@ const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
 function deadline(i){ if(!i.due) return null; const [y,m,d]=i.due.split('-').map(Number); let hh=23,mm=59; if(i.dueTime){const p=i.dueTime.split(':').map(Number); hh=p[0]; mm=p[1]||0;} return new Date(y,m-1,d,hh,mm).getTime(); }
 function fmtLeft(ms){ if(ms<36e5) return Math.max(1,Math.round(ms/6e4))+' min'; if(ms<48*36e5) return Math.round(ms/36e5)+'h'; const d=Math.round(ms/864e5); return d+(d===1?' dia':' dias'); }
 function countdown(i){
-  if(!i.due) return null;
+  if(!i.due||i.status==='approval') return null;
   const now=Date.now(), dl=deadline(i), D=864e5;
   const days=Math.round((parseD(i.due)-parseD(today()))/D);
   if(dl<now){
@@ -1511,7 +1514,7 @@ function rowHTML(i,opt){
       <div class="row-acts"><button class="btn small ghost" data-reopen="${esc(i.id)}" title="Voltar a atividade">${ic('undo')}Reabrir</button><button class="btn small ghost danger" data-hdel="${esc(i.id)}" title="Excluir">${ic('trash')}</button></div></div>`;
   }
   return `<div class="row ${selectedId===i.id?'sel':''} ${done?'done':''} ${sticky.has(i.id)?'touched':''}" data-id="${esc(i.id)}">
-    ${note?`<span class="note-ic">${ic('note')}</span>`:`<button class="check ${i.priority&&!done?'p'+i.priority:''}" data-check="${esc(i.id)}" title="${done?'Reabrir':'Concluir'}">${done?ic('check'):''}</button>`}
+    ${note?`<span class="note-ic">${ic('note')}</span>`:`<button class="check ${i.status==='approval'&&!done?'appr':i.priority&&!done?'p'+i.priority:''}" data-check="${esc(i.id)}" title="${done?'Reabrir':i.status==='approval'?'Aprovada? Concluir':'Concluir'}">${done||i.status==='approval'?ic('check'):''}</button>`}
     <div class="row-main"><div class="row-title">${i.title?esc(i.title):'<span class="muted">Sem título</span>'}</div>${prev}${(()=>{
       const sel=!note&&!done?`<select class="row-status st-${i.status}" data-rstatus="${esc(i.id)}" title="Mudar status">${['todo','doing','waiting','approval','done','cancelled'].map(k=>`<option value="${k}" ${(i.status==='inbox'?'todo':i.status)===k?'selected':''}>${STATUS[k]}</option>`).join('')}</select>`:'';
       return meta.length||sel?`<div class="row-foot">${meta.length?`<div class="meta">${meta.join('')}</div>`:'<span></span>'}${sel}</div>`:''; })()}</div></div>`;
@@ -1910,6 +1913,9 @@ function dateInfo(i){
     if(i.completedAt){let s='Concluída '+fmtDT(i.completedAt);
       if(i.due){const dd=Math.round((parseD(dstr(new Date(i.completedAt)))-parseD(i.due))/864e5); s+=dd>0?` · ${dd} ${dd===1?'dia':'dias'} depois do prazo`:dd<0?` · ${-dd} ${dd===-1?'dia':'dias'} antes do prazo`:' · no dia do prazo';}
       out.push(`<div class="cd-line cd-done">${ic('checkc')}${s}</div>`);}
+  } else if(i.status==='approval'){ let s='Prazo pausado: enviada para aprovação'+(i.approvalAt?' '+fmtDT(i.approvalAt):'');
+      if(i.due&&i.approvalAt){const dd=Math.round((parseD(dstr(new Date(i.approvalAt)))-parseD(i.due))/864e5); s+=dd>0?` · ${dd} ${dd===1?'dia':'dias'} depois do prazo`:dd<0?` · ${-dd} ${dd===-1?'dia':'dias'} antes do prazo`:' · no dia do prazo';}
+      out.push(`<div class="cd-line cd-appr">${ic('check')}${s}</div>`);
   } else { const cd=countdown(i); if(cd) out.push(`<div class="cd-line cd-${cd.level}">${ic('clock')}${cap1(cd.text)}${cd.level==='today'||cd.level==='24h'?' · aviso ativo':''}</div>`); }
   if(i.start&&i.due){const n=Math.round((parseD(i.due)-parseD(i.start))/864e5)+1; out.push(`<div class="muted small" style="margin-top:-6px">Período: ${fmtDue(i.start)} → ${fmtDue(i.due)} ${n>0?'('+n+(n===1?' dia)':' dias)'):'· o início está depois do prazo'}</div>`);}
   return out.join('');
@@ -1927,7 +1933,7 @@ function bindDetail(id){
   t.onblur=()=>{if(timers[id]) flush(id);};
   const n=$('#dNotes'); if(n){ autosize(n); n.oninput=()=>{autosize(n); updateItem(id,{notes:n.value},true);}; n.onblur=()=>{if(timers[id]) flush(id);}; }
   const s=$('#dStatus'); if(s) s.onchange=()=>{const v=s.value;const p={status:v};
-    if(v==='approval'){ askApprover(get(),who=>{ updateItem(id,{status:'approval',approver:who,completedAt:null}); renderDetail(); toast('Para aprovação de @'+who); },()=>renderDetail()); return; } p.completedAt=(v==='done'||v==='cancelled')?(get().completedAt||Date.now()):null; updateItem(id,p); renderDetail();};
+    if(v==='approval'){ askApprover(get(),who=>{ updateItem(id,{status:'approval',approver:who,completedAt:null,approvalAt:Date.now()}); renderDetail(); toast('Para aprovação de @'+who); },()=>renderDetail()); return; } p.completedAt=(v==='done'||v==='cancelled')?(get().completedAt||Date.now()):null; updateItem(id,p); renderDetail();};
   $('#dArea').onchange=e=>updateItem(id,{area:e.target.value||null});
   const pr=$('#dPrio'); if(pr) pr.onchange=()=>updateItem(id,{priority:+pr.value});
   const apb=$('#dApprover'); if(apb) apb.onclick=()=>askApprover(get(),who=>{ updateItem(id,{approver:who}); renderDetail(); });
@@ -2452,7 +2458,7 @@ $('#list').addEventListener('click',e=>{
   const et=e.target.closest('[data-evtask]'); if(et&&!e.target.closest('a')){ select(et.dataset.evtask); } });
 $('#list').addEventListener('change',e=>{
   const rs=e.target.closest('[data-rstatus]'); if(rs){ const i=items.find(x=>x.id===rs.dataset.rstatus); if(!i) return; const v=rs.value, p={status:v};
-    if(v==='approval'){ askApprover(i,who=>{ updateItem(i.id,{status:'approval',approver:who,completedAt:null}); toast('Para aprovação de @'+who); if(selectedId===i.id) renderDetail(); },()=>renderList()); return; }
+    if(v==='approval'){ askApprover(i,who=>{ updateItem(i.id,{status:'approval',approver:who,completedAt:null,approvalAt:Date.now()}); toast('Para aprovação de @'+who); if(selectedId===i.id) renderDetail(); },()=>renderList()); return; }
     p.completedAt=(v==='done'||v==='cancelled')?(i.completedAt||Date.now()):null;
     updateItem(i.id,p); toast(v==='done'?'Concluída ✓ (foi para Concluídos)':v==='cancelled'?'Cancelada (foi para Concluídos)':'Status: '+STATUS[v]);
     if(selectedId===i.id) renderDetail(); return; }
