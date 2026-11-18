@@ -1270,7 +1270,7 @@ const ic=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColo
 
 const DEFAULT_AREAS=[{id:'trabalho',name:'Trabalho',color:'#3563e9'},{id:'pessoal',name:'Pessoal',color:'#16a34a'},{id:'estudos',name:'Estudos',color:'#9333ea'},{id:'financas',name:'Finanças',color:'#d97706'}];
 const COLORS=['#3563e9','#16a34a','#9333ea','#d97706','#e11d48','#0891b2','#64748b','#c026d3','#65a30d'];
-const STATUS={inbox:'Caixa de entrada',todo:'A fazer',doing:'Em andamento',waiting:'Pendência',approval:'Para aprovação',done:'Concluída',cancelled:'Cancelada'};
+const STATUS={inbox:'Caixa de entrada',todo:'A fazer',doing:'Em andamento',waiting:'Pendência',approval:'Para aprovação',done:'Finalizada',cancelled:'Cancelada'};
 const isClosed=i=>i.status==='done'||i.status==='cancelled';
 const PRIO={0:'Sem prioridade',1:'Alta',2:'Média',3:'Baixa'};
 
@@ -1380,7 +1380,7 @@ function applySticky(v){
   else if(sticky.size&&lastLayout){
     const present=new Set(); v.groups.forEach(g=>g.items.forEach(i=>present.add(i.id)));
     lastLayout.forEach((lg,gi)=>{ const g=v.groups.find(x=>x.label===lg.label)||v.groups[gi]; if(!g) return;
-      lg.ids.forEach((id,idx)=>{ if(!sticky.has(id)||present.has(id)) return; const it=items.find(x=>x.id===id); if(!it||hiddenItem(it)) return; if(isClosed(it)&&view!=='done') return;
+      lg.ids.forEach((id,idx)=>{ if(!sticky.has(id)||present.has(id)) return; const it=items.find(x=>x.id===id); if(!it||hiddenItem(it)) return; if(isClosed(it)&&view!=='done') return; if(view==='done'&&!isClosed(it)) return;
         g.items.splice(Math.min(idx,g.items.length),0,it); present.add(id); }); });
   }
   lastLayout=v.groups.map(g=>({label:g.label,ids:g.items.map(i=>i.id)})); lastLayoutView=view;
@@ -1496,7 +1496,7 @@ const NAV=[
   {id:'upcoming',label:'Próximos',icon:'calendar'},
   {id:'tasks',label:'Todas as tarefas',icon:'list'},
   {id:'agenda',label:'Agenda Google',icon:'gcal'},
-  {id:'done',label:'Concluídos',icon:'checkc'}
+  {id:'done',label:'Finalizados',icon:'checkc'}
 ];
 function counts(){
   const t=today();
@@ -1552,8 +1552,8 @@ function getView(){
     const ds=view.slice(4), h=holOf(ds), vv=vis().filter(i=>!isNote(i));
     const due=vv.filter(i=>i.due===ds).sort(byDeadline), st=vv.filter(i=>i.start===ds&&i.due!==ds), dn=vv.filter(i=>i.completedAt&&dstr(new Date(i.completedAt))===ds&&i.due!==ds&&i.start!==ds);
     return {title:cap1(fmtLong(ds)),sub:h?'🎉 '+h.name:(ds===today()?'Hoje':'Clique em outro dia no calendário para trocar.'),groups:[
-      {label:'Prazo neste dia',items:due},{label:'Começam neste dia',items:st},{label:'Concluídas neste dia',items:dn}],
-      empty:['Nada neste dia',h?'É feriado: aproveite!':'Nenhuma tarefa com prazo, início ou conclusão nesta data.']};
+      {label:'Prazo neste dia',items:due},{label:'Começam neste dia',items:st},{label:'Finalizadas neste dia',items:dn}],
+      empty:['Nada neste dia',h?'É feriado: aproveite!':'Nenhuma tarefa com prazo, início ou finalização nesta data.']};
   }
   if(view.startsWith('area:')){
     const id=view.slice(5), a=areaById(id);
@@ -1668,7 +1668,7 @@ function rowHTML(i,opt){
       <div class="row-acts"><button class="btn small ghost" data-reopen="${esc(i.id)}" title="Voltar a atividade">${ic('undo')}Reabrir</button><button class="btn small ghost danger" data-hdel="${esc(i.id)}" title="Excluir">${ic('trash')}</button></div></div>`;
   }
   return `<div class="row ${selectedId===i.id?'sel':''} ${done?'done':''} ${sticky.has(i.id)?'touched':''}" data-id="${esc(i.id)}">
-    ${note?`<span class="note-ic">${ic('note')}</span>`:`<button class="check ${i.status==='approval'&&!done?'appr':i.priority&&!done?'p'+i.priority:''}" data-check="${esc(i.id)}" title="${done?'Reabrir':i.status==='approval'?'Aprovada? Concluir':'Concluir'}">${done||i.status==='approval'?ic('check'):''}</button>`}
+    ${note?`<span class="note-ic">${ic('note')}</span>`:`<button class="check ${i.status==='approval'&&!done?'appr':i.priority&&!done?'p'+i.priority:''}" data-check="${esc(i.id)}" title="${done?'Reabrir':i.status==='approval'?'Aprovada? Finalizar':'Finalizar'}">${done||i.status==='approval'?ic('check'):''}</button>`}
     <div class="row-main"><div class="row-title">${i.title?esc(i.title):'<span class="muted">Sem título</span>'}</div>${prev}${(()=>{
       const sel=!note&&!done?`<select class="row-status st-${i.status}" data-rstatus="${esc(i.id)}" title="Mudar status">${['todo','doing','waiting','approval','done','cancelled'].map(k=>`<option value="${k}" ${(i.status==='inbox'?'todo':i.status)===k?'selected':''}>${STATUS[k]}</option>`).join('')}</select>`:'';
       return meta.length||sel?`<div class="row-foot">${meta.length?`<div class="meta">${meta.join('')}</div>`:'<span></span>'}${sel}</div>`:''; })()}</div></div>`;
@@ -1769,12 +1769,12 @@ function histView(){
       <label class="hist-cb"><input type="checkbox" data-hcancel ${hist.cancel?'checked':''}> Incluir canceladas</label>
       ${hist.area||hist.ativ?'<button class="linklike" data-hclear>limpar filtros</button>':''}
     </div>
-    <div class="hist-sum"><div class="hist-big"><b>${nDone}</b> ${nDone===1?'concluída':'concluídas'}${nCan?` <span class="muted">· ${nCan} cancelada${nCan===1?'':'s'}</span>`:''}</div>
+    <div class="hist-sum"><div class="hist-big"><b>${nDone}</b> ${nDone===1?'finalizada':'finalizadas'}${nCan?` <span class="muted">· ${nCan} cancelada${nCan===1?'':'s'}</span>`:''}</div>
       <div class="hist-areas">${Object.entries(byArea).sort((a,b)=>b[1]-a[1]).map(([k,n])=>{ const a=areaById(k); return `<button class="chip hist-chip ${hist.area===k?'on':''}" data-hpick="${esc(k)}">${a?mark(a)+esc(a.name):'Sem área'} <b>${n}</b></button>`; }).join('')}</div></div>
-    ${lockedList.length?`<div class="hist-lock">${ic('lock')}<span><b>${lockedList.length}</b> concluída${lockedList.length===1?'':'s'} em áreas protegidas neste período</span>${hist.showLocked?`<button class="btn small" data-hlock="hide">${ic('lock')}Ocultar</button>`:`<button class="btn small" data-hlock="show">${ic('unlock')}Mostrar com senha</button>`}</div>`:''}`;
+    ${lockedList.length?`<div class="hist-lock">${ic('lock')}<span><b>${lockedList.length}</b> finalizada${lockedList.length===1?'':'s'} em áreas protegidas neste período</span>${hist.showLocked?`<button class="btn small" data-hlock="hide">${ic('lock')}Ocultar</button>`:`<button class="btn small" data-hlock="show">${ic('unlock')}Mostrar com senha</button>`}</div>`:''}`;
   if(hist.showLocked&&lockedList.length) g.push({key:'__locked',label:'🔒 Áreas protegidas',items:lockedList,locked:true});
-  return {title:'Concluídos',sub:'Tudo o que você concluiu, por período.',groups:g,top,
-    empty:['Nada concluído neste período', hist.area||hist.ativ?'Tente limpar os filtros ou mudar o período.':'Use as setas para ver outros períodos.']};
+  return {title:'Finalizados',sub:'Tudo o que você finalizou, por período.',groups:g,top,
+    empty:['Nada finalizado neste período', hist.area||hist.ativ?'Tente limpar os filtros ou mudar o período.':'Use as setas para ver outros períodos.']};
 }
 function renderList(){
   const v=getView(); applySticky(v);
@@ -1948,7 +1948,7 @@ function renderDetail(){
     <label>Prazo inicial<button type="button" class="date-btn" data-dp="start">${i.start?fmtShortD(i.start):'<span class="ph">Definir</span>'}${ic('calendar')}</button></label>
     <label>Prazo final<button type="button" class="date-btn" data-dp="due">${i.due?fmtShortD(i.due):'<span class="ph">Definir</span>'}${ic('calendar')}</button></label>
     <label>Horário<button type="button" class="date-btn" data-dp="time">${i.dueTime?esc(i.dueTime):'<span class="ph">Opcional</span>'}${ic('clock')}</button></label>
-    <label>Conclusão<button type="button" class="date-btn" data-dp="done">${i.completedAt?fmtShortD(dstr(new Date(i.completedAt))):'<span class="ph">Definir</span>'}${ic('checkc')}</button></label>
+    <label>Finalização<button type="button" class="date-btn" data-dp="done">${i.completedAt?fmtShortD(dstr(new Date(i.completedAt))):'<span class="ph">Definir</span>'}${ic('checkc')}</button></label>
   </div>
   <div class="d-card-sub">${dateInfo(i)}${gcalRow(i)}</div>
   </section>`:''}
@@ -2064,7 +2064,7 @@ function gcalRow(i){
 function dateInfo(i){
   const out=[];
   if(isClosed(i)){
-    if(i.completedAt){let s='Concluída '+fmtDT(i.completedAt);
+    if(i.completedAt){let s='Finalizada '+fmtDT(i.completedAt);
       if(i.due){const dd=Math.round((parseD(dstr(new Date(i.completedAt)))-parseD(i.due))/864e5); s+=dd>0?` · ${dd} ${dd===1?'dia':'dias'} depois do prazo`:dd<0?` · ${-dd} ${dd===-1?'dia':'dias'} antes do prazo`:' · no dia do prazo';}
       out.push(`<div class="cd-line cd-done">${ic('checkc')}${s}</div>`);}
   } else if(i.status==='approval'){ let s='Prazo pausado: enviada para aprovação'+(i.approvalAt?' '+fmtDT(i.approvalAt):'');
@@ -2399,8 +2399,8 @@ function wizRender(){
         <label class="wz-f ${stp==='time'?'act':''}">Horário${wizDateBtn('dueTime',d.due?d.dueTime:null,d.due?'Opcional':'Defina o prazo','clock')}</label>
       </div>${qHtml}`);
     const prio=`<div class="wz-f">Prioridade<div class="wz-chips wz-seg">${[[1,'Alta'],[2,'Média'],[3,'Baixa'],[0,'Nenhuma']].map(([v,l])=>chip('priority',v,l,(d.priority||0)===v,`<i class="dotp p${v}"></i>`)).join('')}</div></div>`;
-    const stat=work?`<div class="wz-f">Situação<div class="wz-chips wz-seg">${[['todo','A fazer'],['doing','Em andamento'],['waiting','Pendência'],['done','Concluída']].map(([v,l])=>chip('status',v,l,d.status===v)).join('')}</div></div>`:'';
-    const doneRow=work&&d.status==='done'?`<div class="wz-done"><label class="wz-f">Data de conclusão${wizDateBtn('doneDate',d.doneDate,'Escolha a data','checkc')}</label><div class="wz-chips">${chip('doneDate',t,'Hoje',d.doneDate===t)}${chip('doneDate',addDays(-1),'Ontem',d.doneDate===addDays(-1))}</div></div>`:'';
+    const stat=work?`<div class="wz-f">Situação<div class="wz-chips wz-seg">${[['todo','A fazer'],['doing','Em andamento'],['waiting','Pendência'],['done','Finalizada']].map(([v,l])=>chip('status',v,l,d.status===v)).join('')}</div></div>`:'';
+    const doneRow=work&&d.status==='done'?`<div class="wz-done"><label class="wz-f">Data de finalização${wizDateBtn('doneDate',d.doneDate,'Escolha a data','checkc')}</label><div class="wz-chips">${chip('doneDate',t,'Hoje',d.doneDate===t)}${chip('doneDate',addDays(-1),'Ontem',d.doneDate===addDays(-1))}</div></div>`:'';
     html+=card('Prioridade e situação',`<div class="wz-ps">${prio}${stat}</div>${doneRow}`);
     html+=card('Observação geral',`<textarea class="wz-in wz-ta" data-wfield="notes" rows="2" placeholder="Uma observação fixa sobre a atividade (opcional). Aparece na aba Anotações.">${esc(d.notes||'')}</textarea>`);
   }
@@ -2458,7 +2458,7 @@ $('#modalBg').addEventListener('click',e=>{
   const wd=e.target.closest('[data-wdp]'); if(wd){ e.preventDefault(); const key=wd.dataset.wdp;
     if(key==='dueTime'&&!wiz.d.due){ toast('Defina o prazo primeiro.'); return; }
     if(dp&&dp.btn===wd){ closeDP(); return; }
-    const titles={due:'Prazo final',start:'Prazo inicial',doneDate:'Data de conclusão',dueTime:'Horário do prazo'};
+    const titles={due:'Prazo final',start:'Prazo inicial',doneDate:'Data de finalização',dueTime:'Horário do prazo'};
     openDP(wd, key==='dueTime'?'time':key==='doneDate'?'done':key, wiz.id, {title:titles[key], get:()=>wiz.d[key]||null, set:v=>{ if(!wiz) return; wizSet(key,v); wizRender(); }});
     return; }
   const del=e.target.closest('[data-wdel]'); if(del){ wiz.d.subtasks.splice(+del.dataset.wdel,1); wizRender(); return; }
@@ -2508,7 +2508,7 @@ function renderDP(){
   for(let k=0;k<42;k++){ const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+k), s=dstr(d);
     const hh=holOf(s); cells.push(`<button class="dp-day ${d.getMonth()!==m?'out':''} ${s===t?'today':''} ${s===sel?'sel':''} ${hh&&hh.type!=='facultativo'?'hol':''}" data-d="${s}" ${hh?`title="${esc(hh.name)}"`:''}>${d.getDate()}</button>`); }
   const nextMon=(()=>{const d=new Date(); d.setDate(d.getDate()+(((8-d.getDay())%7)||7)); return dstr(d);})();
-  const titles={start:'Prazo inicial',due:'Prazo final',done:'Concluída em'};
+  const titles={start:'Prazo inicial',due:'Prazo final',done:'Finalizada em'};
   el.innerHTML=`<div class="dp-title">${(dp.custom&&dp.custom.title)||titles[dp.field]}</div>
    <div class="dp-head"><button class="dp-nav" data-nav="-1" title="Mês anterior">${ic('chev')}</button><b>${cap1(first.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}))}</b><button class="dp-nav" data-nav="1" title="Próximo mês">${ic('chev')}</button></div>
    <div class="dp-grid">${['D','S','T','Q','Q','S','S'].map(w=>`<div class="dp-wd">${w}</div>`).join('')}${cells.join('')}</div>
@@ -2525,7 +2525,7 @@ function applyDate(id,field,val){
   else if(field==='due'){ updateItem(id,val?{due:val}:{due:null,dueTime:null}); if(val&&it.start&&it.start>val) toast('Atenção: o prazo está antes do início.'); }
   else if(field==='done'){
     if(!val){ const p={completedAt:null}; if(isClosed(it)) p.status='todo'; updateItem(id,p); if(p.status) toast('Tarefa reaberta'); }
-    else { const [y,m,d]=val.split('-').map(Number); const o=it.completedAt?new Date(it.completedAt):new Date(); const p={completedAt:new Date(y,m-1,d,o.getHours(),o.getMinutes()).getTime()}; if(!isClosed(it)){ p.status='done'; toast('Tarefa marcada como concluída ✓'); } updateItem(id,p); }
+    else { const [y,m,d]=val.split('-').map(Number); const o=it.completedAt?new Date(it.completedAt):new Date(); const p={completedAt:new Date(y,m-1,d,o.getHours(),o.getMinutes()).getTime()}; if(!isClosed(it)){ p.status='done'; toast('Tarefa marcada como finalizada ✓'); } updateItem(id,p); }
   }
   if(selectedId===id) renderDetail();
 }
@@ -2578,13 +2578,13 @@ $('#list').onclick=e=>{
     else { plMark(i.id); toast(ps==='changed'?'Marcada como atualizada no planner ✓':'Marcada como lançada no planner ✓'); }
     renderList(); if(selectedId===i.id) renderDetail(); return; }
   const ro=e.target.closest('[data-reopen]'); if(ro){ e.stopPropagation(); const i=items.find(x=>x.id===ro.dataset.reopen); if(!i) return;
-    confirmBox('Voltar a atividade?',`<b>${esc(i.title||'')}</b> volta para a lista de tarefas abertas e sai do histórico.`,'Sim, reabrir',false,()=>{ updateItem(i.id,{status:'todo',completedAt:null}); toast('Atividade reaberta'); if(selectedId===i.id) renderDetail(); }); return; }
+    confirmBox('Voltar a atividade?',`<b>${esc(i.title||'')}</b> volta para a lista de tarefas abertas e sai do histórico.`,'Sim, reabrir',false,()=>{ updateItem(i.id,{status:'todo',completedAt:null}); sticky.delete(i.id); renderList(); toast('Atividade reaberta: voltou para A fazer'); if(selectedId===i.id) renderDetail(); }); return; }
   const hd=e.target.closest('[data-hdel]'); if(hd){ e.stopPropagation(); const i=items.find(x=>x.id===hd.dataset.hdel); if(!i) return;
     confirmBox('Excluir atividade?',`<b>${esc(i.title||'')}</b> será excluída de vez. Isso não pode ser desfeito.`,'Sim, excluir',true,()=>{ deleteItem(i.id); toast('Atividade excluída'); }); return; }
   const c=e.target.closest('[data-check]');
   if(c){e.stopPropagation(); const i=items.find(x=>x.id===c.dataset.check); if(!i) return;
-    if(isClosed(i)) updateItem(i.id,{status:'todo',completedAt:null});
-    else {updateItem(i.id,{status:'done',completedAt:Date.now()}); toast('Concluída ✓');}
+    if(isClosed(i)){ updateItem(i.id,{status:'todo',completedAt:null}); if(view==='done'){ sticky.delete(i.id); renderList(); toast('Atividade reaberta: voltou para A fazer'); } }
+    else {updateItem(i.id,{status:'done',completedAt:Date.now()}); toast('Finalizada ✓');}
     if(selectedId===i.id) renderDetail(); return;}
   const r=e.target.closest('[data-id]'); if(r) select(r.dataset.id===selectedId?null:r.dataset.id);
 };
@@ -2614,7 +2614,7 @@ $('#list').addEventListener('change',e=>{
   const rs=e.target.closest('[data-rstatus]'); if(rs){ const i=items.find(x=>x.id===rs.dataset.rstatus); if(!i) return; const v=rs.value, p={status:v};
     if(v==='approval'){ askApprover(i,who=>{ updateItem(i.id,{status:'approval',approver:who,completedAt:null,approvalAt:Date.now()}); toast('Para aprovação de @'+who); if(selectedId===i.id) renderDetail(); },()=>renderList()); return; }
     p.completedAt=(v==='done'||v==='cancelled')?(i.completedAt||Date.now()):null;
-    updateItem(i.id,p); toast(v==='done'?'Concluída ✓ (foi para Concluídos)':v==='cancelled'?'Cancelada (foi para Concluídos)':'Status: '+STATUS[v]);
+    updateItem(i.id,p); toast(v==='done'?'Finalizada ✓ (foi para Finalizados)':v==='cancelled'?'Cancelada (foi para Finalizados)':'Status: '+STATUS[v]);
     if(selectedId===i.id) renderDetail(); return; }
   if(e.target.matches('[data-harea]')){ hist.area=e.target.value; renderList(); }
   if(e.target.matches('[data-hativ]')){ hist.ativ=e.target.value; renderList(); }
